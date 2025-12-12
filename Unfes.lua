@@ -14,7 +14,7 @@ local NOTE_FONT_SIZE = 24
 
 -- 1. CẤU HÌNH TÊN FILE (Đã sửa chuẩn)
 local USERNAME = localPlayer.Name
-local CONFIG_FILE_NAME = "Unfes" .. USERNAME .. ".txt"
+local CONFIG_FILE_NAME = "Unfes_" .. USERNAME .. ".txt"
 
 -- Hàm che tên
 local function generateMaskedName(str)
