@@ -142,7 +142,7 @@ end
 
 local USERNAME = localPlayer.Name
 local MASKED_USERNAME = generateMaskedName(USERNAME)
-local CONFIG_FILE_NAME = USERNAME .. ".txt" 
+local CONFIG_FILE_NAME = "Unfes" USERNAME .. ".txt" 
 
 local GameName = "Loading..."
 task.spawn(function()
