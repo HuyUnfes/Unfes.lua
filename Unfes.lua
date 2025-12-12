@@ -1,6 +1,3 @@
-getgenv().ShowFPS = true 
-getgenv().HideLeaderboard = true -- [ON] Che tên trên Bảng Xếp Hạng
-
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
@@ -362,3 +359,5 @@ if localPlayer and playerGui then
     -- [THÔNG BÁO 2] THÀNH CÔNG (CHỈ CHẠY KHI CODE ĐẾN ĐƯỢC DÒNG NÀY)
     SendNotification("Script Status", "Loaded Successfully!", localPlayer.UserId, 5)
 end
+print("wsp")
+warn("BETA")
