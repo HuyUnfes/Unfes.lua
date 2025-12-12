@@ -12,8 +12,45 @@ local transparencyLevel = 0.3
 local FONT_SIZE = 20 
 local NOTE_FONT_SIZE = 24 
 
+-- 1. CẤU HÌNH TÊN FILE (Đã sửa chuẩn)
+local USERNAME = localPlayer.Name
+local CONFIG_FILE_NAME = "Unfes" .. USERNAME .. ".txt"
+
+-- Hàm che tên
+local function generateMaskedName(str)
+    local len = #str
+    if len <= 3 then return str end 
+    local obscureLength = math.ceil(len / 2) 
+    local visibleLen = len - obscureLength
+    local startLen = math.ceil(visibleLen / 2)
+    local endLen = visibleLen - startLen
+    return str:sub(1, startLen) .. string.rep("*", obscureLength) .. str:sub(len - endLen + 1, len)
+end
+local MASKED_USERNAME = generateMaskedName(USERNAME)
+
+-- Lấy tên Map
+local GameName = "Loading..."
+task.spawn(function()
+    pcall(function()
+        local info = MarketplaceService:GetProductInfo(game.PlaceId)
+        GameName = info.Name
+    end)
+end)
+
+-- Đọc/Lưu file
+local function readConfig(fileName)
+    if readfile then
+        local success, content = pcall(readfile, fileName)
+        if success and content and content ~= "" then return content end
+    end
+    return "" 
+end
+local function saveConfig(fileName, content)
+    if writefile then pcall(writefile, fileName, content) end
+end
+
 -- ==================================================================
--- PHẦN 1: HỆ THỐNG THÔNG BÁO (NOTIFICATION SYSTEM) - BLACK THEME
+-- HỆ THỐNG THÔNG BÁO (NOTIFICATION) - BLACK THEME
 -- ==================================================================
 local NotifyGui = Instance.new("ScreenGui")
 NotifyGui.Name = "UnfesNotificationGUI"
@@ -35,10 +72,7 @@ NotifyListLayout.Parent = NotifyContainer
 local function SendNotification(title, text, userId, duration)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 300, 0, 70)
-    
-    -- [ĐỔI MÀU] Background màu Đen
     frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10) 
-    
     frame.BorderSizePixel = 0
     frame.Parent = NotifyContainer
     
@@ -46,7 +80,6 @@ local function SendNotification(title, text, userId, duration)
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
     
-    -- Icon
     local icon = Instance.new("ImageLabel")
     icon.Size = UDim2.new(0, 50, 0, 50)
     icon.Position = UDim2.new(0, 10, 0, 10)
@@ -62,7 +95,6 @@ local function SendNotification(title, text, userId, duration)
     iconCorner.Parent = icon
     icon.Parent = frame
     
-    -- Tiêu đề
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1, -80, 0, 25)
     titleLabel.Position = UDim2.new(0, 70, 0, 10)
@@ -74,7 +106,6 @@ local function SendNotification(title, text, userId, duration)
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Parent = frame
     
-    -- Nội dung
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, -80, 0, 25)
     textLabel.Position = UDim2.new(0, 70, 0, 35)
@@ -86,7 +117,6 @@ local function SendNotification(title, text, userId, duration)
     textLabel.TextXAlignment = Enum.TextXAlignment.Left
     textLabel.Parent = frame
     
-    -- [ĐỔI MÀU] Line màu Trắng để nổi bật trên nền đen
     local line = Instance.new("Frame")
     line.Size = UDim2.new(1, 0, 0, 2)
     line.Position = UDim2.new(0, 0, 1, -2)
@@ -97,7 +127,6 @@ local function SendNotification(title, text, userId, duration)
     lineCorner.CornerRadius = UDim.new(0, 8)
     lineCorner.Parent = line
 
-    -- Animation
     frame.BackgroundTransparency = 1
     icon.ImageTransparency = 1
     titleLabel.TextTransparency = 1
@@ -123,46 +152,11 @@ local function SendNotification(title, text, userId, duration)
     end)
 end
 
--- [THÔNG BÁO 1] LOADING
 SendNotification("Script Status", "Loading...", localPlayer.UserId, 2)
 
 -- ==================================================================
--- PHẦN 2: MAIN SCRIPT
+-- MAIN UI SCRIPT
 -- ==================================================================
-
-local function generateMaskedName(str)
-    local len = #str
-    if len <= 3 then return str end 
-    local obscureLength = math.ceil(len / 2) 
-    local visibleLen = len - obscureLength
-    local startLen = math.ceil(visibleLen / 2)
-    local endLen = visibleLen - startLen
-    return str:sub(1, startLen) .. string.rep("*", obscureLength) .. str:sub(len - endLen + 1, len)
-end
-
-local USERNAME = localPlayer.Name
-local MASKED_USERNAME = generateMaskedName(USERNAME)
-local CONFIG_FILE_NAME = "Unfes" USERNAME .. ".txt" 
-
-local GameName = "Loading..."
-task.spawn(function()
-    pcall(function()
-        local info = MarketplaceService:GetProductInfo(game.PlaceId)
-        GameName = info.Name
-    end)
-end)
-
-local function readConfig(fileName)
-    if readfile then
-        local success, content = pcall(readfile, fileName)
-        if success and content and content ~= "" then return content end
-    end
-    return "" 
-end
-local function saveConfig(fileName, content)
-    if writefile then pcall(writefile, fileName, content) end
-end
-
 local playerGui = localPlayer:WaitForChild("PlayerGui")
 
 if localPlayer and playerGui then 
@@ -172,7 +166,7 @@ if localPlayer and playerGui then
     
     local outerFrame = Instance.new("Frame")
     outerFrame.Name = "RainbowBorderFrame"
-    outerFrame.Size = UDim2.new(0.45, 0, 0.15, 0) -- Width 0.45
+    outerFrame.Size = UDim2.new(0.45, 0, 0.15, 0) 
     outerFrame.Position = UDim2.new(0.5, 0, 0.05, 0) 
     outerFrame.AnchorPoint = Vector2.new(0.5, 0)
     outerFrame.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -214,7 +208,6 @@ if localPlayer and playerGui then
     headerFrame.BackgroundTransparency = 1
     headerFrame.Parent = innerFrame
 
-    -- 1. Username
     local usernameLabel = Instance.new("TextLabel")
     usernameLabel.Name = "UsernameLabel"
     usernameLabel.Size = UDim2.new(0.3, 0, 1, 0) 
@@ -227,7 +220,6 @@ if localPlayer and playerGui then
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Left 
     usernameLabel.Parent = headerFrame
 
-    -- 2. Map Name
     local mapNameLabel = Instance.new("TextLabel")
     mapNameLabel.Name = "MapNameLabel"
     mapNameLabel.Size = UDim2.new(0.5, 0, 1, 0) 
@@ -247,7 +239,6 @@ if localPlayer and playerGui then
         mapNameLabel.Text = GameName
     end)
 
-    -- 3. FPS
     local fpsLabel = Instance.new("TextLabel")
     fpsLabel.Name = "FPSLabel"
     fpsLabel.Size = UDim2.new(0.2, 0, 1, 0)
@@ -356,8 +347,8 @@ if localPlayer and playerGui then
     end
     task.spawn(animateRainbowBorder)
     
-    -- [THÔNG BÁO 2] THÀNH CÔNG (CHỈ CHẠY KHI CODE ĐẾN ĐƯỢC DÒNG NÀY)
+    -- THÔNG BÁO CUỐI CÙNG (PRINT & WARN & NOTIFY)
     SendNotification("Script Status", "Loaded Successfully!", localPlayer.UserId, 5)
+    print("Code Loaded Successfully! - Script by HuyUnfes")
+    warn("Code Loaded Successfully! - Script by HuyUnfes")
 end
-print("wsp")
-warn("BETA")
