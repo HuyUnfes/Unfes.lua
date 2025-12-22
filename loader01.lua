@@ -18,14 +18,11 @@ local CONFIG_FILE_NAME = "Unfes_" .. USERNAME .. ".txt"
 local IMAGE_NAME = "AFK_Background_HuyUnfes.webp"
 local IMAGE_URL = "https://images5.alphacoders.com/135/thumb-350-1351993.webp"
 
--- Hàm tải ảnh từ Web về máy
 local function downloadBackground()
     if writefile and readfile and not isfile(IMAGE_NAME) then
         pcall(function()
             local success, content = pcall(function() return game:HttpGet(IMAGE_URL) end)
-            if success then
-                writefile(IMAGE_NAME, content)
-            end
+            if success then writefile(IMAGE_NAME, content) end
         end)
     end
 end
@@ -43,29 +40,26 @@ local function readConfig()
 end
 
 -- ==================================================================
--- AFK MODE (HÌNH NỀN MỜ 90% - FONT DANCING SCRIPT)
+-- AFK MODE (NHÌN XUYÊN THẤU + NÚT X TẮT)
 -- ==================================================================
 local afkScreen = Instance.new("ScreenGui", localPlayer.PlayerGui)
-afkScreen.Name = "AFK_Overlay_Dimmed_90"
+afkScreen.Name = "AFK_Overlay_Final_X"
 afkScreen.Enabled = false
 afkScreen.IgnoreGuiInset = true 
 afkScreen.DisplayOrder = 999
 
 local afkBg = Instance.new("ImageLabel", afkScreen)
 afkBg.Size = UDim2.new(1, 0, 1, 0)
-afkBg.BackgroundColor3 = Color3.new(0, 0, 0) -- Nền đen
-afkBg.BackgroundTransparency = 0 
+afkBg.BackgroundTransparency = 1 -- Trong suốt để thấy game
 afkBg.ScaleType = Enum.ScaleType.Crop
-afkBg.ImageTransparency = 0.9 -- LÀM MỜ ẢNH 90%
+afkBg.ImageTransparency = 0.7 -- Ảnh mờ 70%
 
--- Hiển thị ảnh
 task.spawn(function()
     while not isfile(IMAGE_NAME) do task.wait(0.5) end
-    pcall(function()
-        afkBg.Image = getcustomasset(IMAGE_NAME)
-    end)
+    pcall(function() afkBg.Image = getcustomasset(IMAGE_NAME) end)
 end)
 
+-- Hàm tạo Label AFK
 local function createAfkLabel(name, pos, color, size, isScaled)
     local l = Instance.new("TextLabel", afkBg)
     l.Name = name
@@ -75,18 +69,33 @@ local function createAfkLabel(name, pos, color, size, isScaled)
     l.TextColor3 = color
     l.BackgroundTransparency = 1
     l.TextStrokeTransparency = 0.5 
-    l.FontFace = Font.new("rbxassetid://8764312106") -- Font Dancing Script
+    l.FontFace = Font.new("rbxassetid://8764312106") -- Dancing Script
     if isScaled then l.TextScaled = true else l.TextSize = size end
     return l
 end
 
--- Cách hàng xa nhau (Bố cục Pacifico)
-local afkTitle = createAfkLabel("Title", UDim2.new(0.5, 0, 0.25, 0), Color3.fromRGB(255, 224, 189), 0, true) -- Màu da
+-- 1. NÚT X (ĐỂ TẮT AFK) - Nằm phía trên tiêu đề
+local exitAfkBtn = Instance.new("TextButton", afkBg)
+exitAfkBtn.Name = "ExitAFK"
+exitAfkBtn.Size = UDim2.new(0, 50, 0, 50)
+exitAfkBtn.Position = UDim2.new(0.5, 0, 0.12, 0) -- Nằm trên tiêu đề (Y=0.12)
+exitAfkBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+exitAfkBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+exitAfkBtn.BackgroundTransparency = 0.8
+exitAfkBtn.Text = "X"
+exitAfkBtn.TextColor3 = Color3.new(1, 1, 1)
+exitAfkBtn.Font = Enum.Font.GothamBold
+exitAfkBtn.TextSize = 30
+local btnCorner = Instance.new("UICorner", exitAfkBtn)
+btnCorner.CornerRadius = UDim.new(1, 0) -- Nút hình tròn
+
+-- 2. TIÊU ĐỀ VÀ THÔNG TIN (Cách hàng xa nhau)
+local afkTitle = createAfkLabel("Title", UDim2.new(0.5, 0, 0.25, 0), Color3.fromRGB(255, 224, 189), 0, true)
 afkTitle.Text = "AFK Mode"
 
-local afkMap = createAfkLabel("Map", UDim2.new(0.5, 0, 0.45, 0), Color3.fromRGB(255, 255, 180), 32, false) -- Vàng nhạt
-local afkUser = createAfkLabel("User", UDim2.new(0.5, 0, 0.58, 0), Color3.fromRGB(173, 216, 230), 28, false) -- Xanh nhạt
-local afkTime = createAfkLabel("Time", UDim2.new(0.5, 0, 0.72, 0), Color3.fromRGB(255, 150, 150), 28, false) -- Đỏ nhạt
+local afkMap = createAfkLabel("Map", UDim2.new(0.5, 0, 0.45, 0), Color3.fromRGB(255, 255, 180), 32, false)
+local afkUser = createAfkLabel("User", UDim2.new(0.5, 0, 0.58, 0), Color3.fromRGB(173, 216, 230), 28, false)
+local afkTime = createAfkLabel("Time", UDim2.new(0.5, 0, 0.72, 0), Color3.fromRGB(255, 150, 150), 28, false)
 
 local function generateMaskedName(str)
     local len = #str
@@ -116,14 +125,22 @@ local function toggleAFK(state)
     end
 end
 
+-- LOGIC TẮT AFK: Nhấn nút X
+exitAfkBtn.MouseButton1Click:Connect(function()
+    toggleAFK(false)
+end)
+
+-- Vẫn giữ phím bất kỳ để tắt (nếu bạn muốn xóa thì xóa phần này)
 UserInputService.InputBegan:Connect(function(i)
     if afkScreen.Enabled and (i.UserInputType == Enum.UserInputType.Keyboard or i.UserInputType == Enum.UserInputType.MouseButton1) then
-        toggleAFK(false)
+        if i.Target ~= exitAfkBtn then -- Chỉ tắt khi không phải đang bấm nút X (tránh trùng lặp)
+            toggleAFK(false)
+        end
     end
 end)
 
 -- ==================================================================
--- MAIN UI & SIDE MENU (GIỮ NGUYÊN UI GIỮA CŨ)
+-- MAIN UI & SIDE MENU (GIỮ NGUYÊN)
 -- ==================================================================
 local screenGui = Instance.new("ScreenGui", localPlayer.PlayerGui)
 screenGui.ResetOnSpawn = false
