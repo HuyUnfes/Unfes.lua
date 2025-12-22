@@ -6,95 +6,105 @@ local Lighting = game:GetService("Lighting")
 local MarketplaceService = game:GetService("MarketplaceService")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
+local UserInputService = game:GetService("UserInputService")
 
 local StartTime = tick()
 
 -- ==================================================================
--- HỆ THỐNG FILE (ANTI-ERROR)
+-- HỆ THỐNG FILE & TẢI ẢNH TỪ URL
 -- ==================================================================
 local USERNAME = localPlayer.Name
 local CONFIG_FILE_NAME = "Unfes_" .. USERNAME .. ".txt"
+local IMAGE_NAME = "AFK_Background_HuyUnfes.webp"
+local IMAGE_URL = "https://images5.alphacoders.com/135/thumb-350-1351993.webp"
+
+-- Hàm tải ảnh từ Web về máy (Chỉ tải 1 lần)
+local function downloadBackground()
+    if writefile and readfile and not isfile(IMAGE_NAME) then
+        pcall(function()
+            local success, content = pcall(function() return game:HttpGet(IMAGE_URL) end)
+            if success then
+                writefile(IMAGE_NAME, content)
+            end
+        end)
+    end
+end
+task.spawn(downloadBackground)
 
 local function saveConfig(content)
-    if writefile then pcall(function() writefile(CONFIG_FILE_NAME, content) end) end
+    pcall(function() if writefile then writefile(CONFIG_FILE_NAME, tostring(content)) end end)
 end
 
 local function readConfig()
-    if isfile and isfile(CONFIG_FILE_NAME) then
-        local success, content = pcall(function() return readfile(CONFIG_FILE_NAME) end)
-        if success then return content end
-    end
-    return "Script by HuyUnfes"
+    local success, content = pcall(function()
+        if isfile and isfile(CONFIG_FILE_NAME) then return readfile(CONFIG_FILE_NAME) end
+    end)
+    return (success and content) or "Script by HuyUnfes"
 end
 
 -- ==================================================================
--- CẤU HÌNH & CHE TÊN
+-- AFK MODE (HÌNH NỀN TỪ LINK WEB)
 -- ==================================================================
-local borderThickness = 3
-local outerCornerRadius = 15
-local transparencyLevel = 0.3
-local FONT_SIZE = 20 
-local NOTE_FONT_SIZE = 24 
+local afkScreen = Instance.new("ScreenGui", localPlayer.PlayerGui)
+afkScreen.Name = "AFK_Overlay_URL"
+afkScreen.Enabled = false
+afkScreen.IgnoreGuiInset = true 
+afkScreen.DisplayOrder = 999
+
+local afkBg = Instance.new("ImageLabel", afkScreen)
+afkBg.Size = UDim2.new(1, 0, 1, 0)
+afkBg.BackgroundColor3 = Color3.new(0, 0, 0)
+afkBg.ScaleType = Enum.ScaleType.Crop
+
+-- Hiển thị ảnh sau khi đã tải về
+task.spawn(function()
+    while not isfile(IMAGE_NAME) do task.wait(0.5) end
+    pcall(function()
+        afkBg.Image = getcustomasset(IMAGE_NAME)
+    end)
+end)
+
+local function createAfkLabel(name, pos, color, size, isScaled)
+    local l = Instance.new("TextLabel", afkBg)
+    l.Name = name
+    l.Size = isScaled and UDim2.new(0.7, 0, 0.2, 0) or UDim2.new(1, 0, 0.05, 0)
+    l.Position = pos
+    l.AnchorPoint = Vector2.new(0.5, 0.5)
+    l.TextColor3 = color
+    l.BackgroundTransparency = 1
+    l.TextStrokeTransparency = 0.5 
+    l.FontFace = Font.new("rbxassetid://8764312106") -- Font Dancing Script
+    if isScaled then l.TextScaled = true else l.TextSize = size end
+    return l
+end
+
+-- Giãn cách hàng AFK (Pacifico Layout)
+local afkTitle = createAfkLabel("Title", UDim2.new(0.5, 0, 0.25, 0), Color3.fromRGB(255, 224, 189), 0, true)
+afkTitle.Text = "AFK Mode"
+
+local afkMap = createAfkLabel("Map", UDim2.new(0.5, 0, 0.45, 0), Color3.fromRGB(255, 255, 180), 32, false)
+local afkUser = createAfkLabel("User", UDim2.new(0.5, 0, 0.58, 0), Color3.fromRGB(173, 216, 230), 28, false)
+local afkTime = createAfkLabel("Time", UDim2.new(0.5, 0, 0.72, 0), Color3.fromRGB(255, 150, 150), 28, false)
 
 local function generateMaskedName(str)
     local len = #str
     if len <= 3 then return str end 
-    local obscure = math.ceil(len / 2) 
-    return str:sub(1, math.ceil((len-obscure)/2)) .. string.rep("*", obscure) .. str:sub(len - math.floor((len-obscure)/2) + 1)
+    local obs = math.ceil(len / 2) 
+    return str:sub(1, math.ceil((len-obs)/2)) .. string.rep("*", obs) .. str:sub(len - math.floor((len-obs)/2) + 1)
 end
 local MASKED_USERNAME = generateMaskedName(USERNAME)
 
 local GameName = "Loading..."
 task.spawn(function()
-    pcall(function()
-        GameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
-    end)
+    pcall(function() GameName = MarketplaceService:GetProductInfo(game.PlaceId).Name end)
 end)
-
--- ==================================================================
--- AFK MODE (SỬ DỤNG FONT DANCING SCRIPT & CÁCH HÀNG)
--- ==================================================================
-local afkScreen = Instance.new("ScreenGui", localPlayer.PlayerGui)
-afkScreen.Name = "AFK_Overlay"
-afkScreen.Enabled = false
-afkScreen.DisplayOrder = 999
-
-local afkBg = Instance.new("Frame", afkScreen)
-afkBg.Size = UDim2.new(1, 0, 1, 0)
-afkBg.BackgroundColor3 = Color3.new(0, 0, 0)
-afkBg.BackgroundTransparency = 0.5
-
-local function createAfkText(pos, color, size, isTitle)
-    local l = Instance.new("TextLabel", afkBg)
-    l.Size = isTitle and UDim2.new(0.7, 0, 0.2, 0) or UDim2.new(1, 0, 0.05, 0)
-    l.Position = pos
-    l.AnchorPoint = Vector2.new(0.5, 0.5)
-    l.TextColor3 = color
-    l.BackgroundTransparency = 1
-    
-    -- LOAD FONT DANCING SCRIPT TỪ HỆ THỐNG ROBLOX
-    pcall(function()
-        l.FontFace = Font.new("rbxasset://fonts/families/DancingScript.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-    end)
-    
-    if isTitle then l.TextScaled = true else l.TextSize = size end
-    return l
-end
-
--- Giãn cách hàng cực xa theo đúng yêu cầu
-local afkTitle = createAfkText(UDim2.new(0.5, 0, 0.25, 0), Color3.fromRGB(255, 224, 189), 0, true) -- Màu da
-afkTitle.Text = "AFK Mode"
-
-local afkMap = createAfkText(UDim2.new(0.5, 0, 0.45, 0), Color3.fromRGB(255, 255, 180), 32, false) -- Vàng nhạt
-local afkUser = createAfkText(UDim2.new(0.5, 0, 0.58, 0), Color3.fromRGB(173, 216, 230), 28, false) -- Xanh nhạt
-local afkTime = createAfkText(UDim2.new(0.5, 0, 0.72, 0), Color3.fromRGB(255, 150, 150), 28, false) -- Đỏ nhạt
 
 local blur = Instance.new("BlurEffect", Lighting)
 blur.Size = 0
 
 local function toggleAFK(state)
     afkScreen.Enabled = state
-    blur.Size = state and 24 or 0
+    blur.Size = state and 12 or 0 
     if state then
         task.spawn(function()
             while afkScreen.Enabled do
@@ -108,15 +118,14 @@ local function toggleAFK(state)
     end
 end
 
--- Thoát AFK khi nhấn phím hoặc click
-game:GetService("UserInputService").InputBegan:Connect(function(i)
+UserInputService.InputBegan:Connect(function(i)
     if afkScreen.Enabled and (i.UserInputType == Enum.UserInputType.Keyboard or i.UserInputType == Enum.UserInputType.MouseButton1) then
         toggleAFK(false)
     end
 end)
 
 -- ==================================================================
--- MAIN UI (UI GIỮA CŨ - KHÔNG ĐỔI)
+-- MAIN UI & SIDE MENU (GIỮ NGUYÊN)
 -- ==================================================================
 local screenGui = Instance.new("ScreenGui", localPlayer.PlayerGui)
 screenGui.ResetOnSpawn = false
@@ -128,7 +137,7 @@ outerFrame.AnchorPoint = Vector2.new(0.5, 0)
 outerFrame.BackgroundColor3 = Color3.new(1, 1, 1)
 outerFrame.Draggable = true
 outerFrame.Active = true
-Instance.new("UICorner", outerFrame).CornerRadius = UDim.new(0, outerCornerRadius)
+Instance.new("UICorner", outerFrame).CornerRadius = UDim.new(0, 15)
 local uiGradient = Instance.new("UIGradient", outerFrame)
 
 local innerFrame = Instance.new("Frame", outerFrame)
@@ -136,32 +145,29 @@ innerFrame.Size = UDim2.new(1, -6, 1, -6)
 innerFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 innerFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 innerFrame.BackgroundColor3 = Color3.new(0, 0, 0)
-innerFrame.BackgroundTransparency = transparencyLevel
-Instance.new("UICorner", innerFrame).CornerRadius = UDim.new(0, outerCornerRadius - 3)
+innerFrame.BackgroundTransparency = 0.3
+Instance.new("UICorner", innerFrame).CornerRadius = UDim.new(0, 12)
 
 local header = Instance.new("Frame", innerFrame)
 header.Size = UDim2.new(1, -15, 0.25, 0); header.BackgroundTransparency = 1
 Instance.new("UIListLayout", innerFrame).HorizontalAlignment = "Center"
 
 local userL = Instance.new("TextLabel", header)
-userL.Size = UDim2.new(0.3, 0, 1, 0); userL.Text = "User: "..MASKED_USERNAME; userL.TextColor3 = Color3.new(0.8,0.8,0.8); userL.TextSize = FONT_SIZE; userL.Font = "SourceSansBold"; userL.BackgroundTransparency = 1; userL.TextXAlignment = "Left"
+userL.Size = UDim2.new(0.3, 0, 1, 0); userL.Text = "User: "..MASKED_USERNAME; userL.TextColor3 = Color3.new(0.8,0.8,0.8); userL.TextSize = 20; userL.Font = "SourceSansBold"; userL.BackgroundTransparency = 1; userL.TextXAlignment = "Left"
 
 local mapL = Instance.new("TextLabel", header)
-mapL.Size = UDim2.new(0.4, 0, 1, 0); mapL.Position = UDim2.new(0.3,0,0,0); mapL.Text = "Loading..."; mapL.TextColor3 = Color3.new(0.8,0.8,0.8); mapL.TextSize = FONT_SIZE; mapL.Font = "SourceSansBold"; mapL.BackgroundTransparency = 1
+mapL.Size = UDim2.new(0.4, 0, 1, 0); mapL.Position = UDim2.new(0.3,0,0,0); mapL.Text = "Loading..."; mapL.TextColor3 = Color3.new(0.8,0.8,0.8); mapL.TextSize = 20; mapL.Font = "SourceSansBold"; mapL.BackgroundTransparency = 1
 
 local fpsL = Instance.new("TextLabel", header)
-fpsL.Size = UDim2.new(0.3, 0, 1, 0); fpsL.Position = UDim2.new(1,0,0,0); fpsL.AnchorPoint = Vector2.new(1,0); fpsL.Text = "FPS: 0"; fpsL.TextColor3 = Color3.fromRGB(0,255,127); fpsL.TextSize = FONT_SIZE; fpsL.Font = "SourceSansBold"; fpsL.BackgroundTransparency = 1; fpsL.TextXAlignment = "Right"
+fpsL.Size = UDim2.new(0.3, 0, 1, 0); fpsL.Position = UDim2.new(1,0,0,0); fpsL.AnchorPoint = Vector2.new(1,0); fpsL.Text = "FPS: 0"; fpsL.TextColor3 = Color3.fromRGB(0,255,127); fpsL.TextSize = 20; fpsL.Font = "SourceSansBold"; fpsL.BackgroundTransparency = 1; fpsL.TextXAlignment = "Right"
 
 local scroll = Instance.new("ScrollingFrame", innerFrame)
 scroll.Size = UDim2.new(1, 0, 0.65, 0); scroll.BackgroundTransparency = 1; scroll.ScrollBarThickness = 3
 
 local note = Instance.new("TextBox", scroll)
-note.Size = UDim2.new(1, -10, 1, 0); note.Position = UDim2.new(0,5,0,0); note.Text = readConfig(); note.PlaceholderText = "Script by HuyUnfes"; note.TextColor3 = Color3.new(1,1,1); note.MultiLine = true; note.TextWrapped = true; note.TextSize = NOTE_FONT_SIZE; note.Font = "SourceSans"; note.BackgroundTransparency = 1; note.TextXAlignment = "Left"; note.TextYAlignment = "Top"
+note.Size = UDim2.new(1, -10, 1, 0); note.Position = UDim2.new(0,5,0,0); note.Text = readConfig(); note.PlaceholderText = "Script by HuyUnfes"; note.TextColor3 = Color3.new(1,1,1); note.MultiLine = true; note.TextWrapped = true; note.TextSize = 24; note.Font = "SourceSans"; note.BackgroundTransparency = 1; note.TextXAlignment = "Left"; note.TextYAlignment = "Top"
 note.FocusLost:Connect(function() saveConfig(note.Text) end)
 
--- ==================================================================
--- PROMPT & SIDE MENU
--- ==================================================================
 local function ShowPrompt()
     local p = Instance.new("Frame", screenGui); p.Size = UDim2.new(0,280,0,120); p.Position = UDim2.new(0.5,0,0.5,0); p.AnchorPoint = Vector2.new(0.5,0.5); p.BackgroundColor3 = Color3.fromRGB(25,25,25); Instance.new("UICorner",p)
     local t = Instance.new("TextLabel",p); t.Size = UDim2.new(1,0,0.6,0); t.Text = "Do you want turn on AFK Mode?"; t.TextColor3 = Color3.new(1,1,1); t.Font = "GothamBold"; t.TextSize = 16; t.BackgroundTransparency = 1; t.TextWrapped = true
@@ -184,12 +190,16 @@ local function sBtn(txt, col)
     local b = Instance.new("TextButton", sideMenu); b.Size = UDim2.new(0.9,0,0,28); b.Text = txt; b.BackgroundColor3 = col; b.TextColor3 = Color3.new(1,1,1); b.Font = "SourceSansBold"; Instance.new("UICorner",b); return b
 end
 
-sBtn("Join Job-id", Color3.fromRGB(45,90,180)).MouseButton1Click:Connect(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, jobIn.Text, localPlayer) end)
+sBtn("Join Job-id", Color3.fromRGB(45,90,180)).MouseButton1Click:Connect(function() 
+    if jobIn.Text ~= "" then TeleportService:TeleportToPlaceInstance(game.PlaceId, jobIn.Text, localPlayer) end
+end)
 sBtn("AFK Mode", Color3.fromRGB(180,130,50)).MouseButton1Click:Connect(ShowPrompt)
 
-toggleSide.MouseButton1Click:Connect(function() sideMenu.Visible = not sideMenu.Visible; toggleSide.Text = sideMenu.Visible and "<" or ">" end)
+toggleSide.MouseButton1Click:Connect(function() 
+    sideMenu.Visible = not sideMenu.Visible
+    toggleSide.Text = sideMenu.Visible and "<" or ">"
+end)
 
--- Cập nhật Rainbow và FPS
 task.spawn(function()
     local h = 0 
     RunService.RenderStepped:Connect(function(dt)
