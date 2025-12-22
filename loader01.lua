@@ -7,28 +7,22 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
 
--- Khởi tạo thời gian bắt đầu (để tính thời gian chơi)
+-- Thời gian bắt đầu
 local StartTime = tick()
 
--- ==================================================================
 -- CẤU HÌNH GỐC
--- ==================================================================
 local borderThickness = 3
 local outerCornerRadius = 15
 local transparencyLevel = 0.3
 local FONT_SIZE = 20 
 local NOTE_FONT_SIZE = 24 
 local USERNAME = localPlayer.Name
-local CONFIG_FILE_NAME = "Unfes_" .. USERNAME .. ".txt"
 
 local function generateMaskedName(str)
     local len = #str
     if len <= 3 then return str end 
     local obscureLength = math.ceil(len / 2) 
-    local visibleLen = len - obscureLength
-    local startLen = math.ceil(visibleLen / 2)
-    local endLen = visibleLen - startLen
-    return str:sub(1, startLen) .. string.rep("*", obscureLength) .. str:sub(len - endLen + 1, len)
+    return str:sub(1, math.ceil((len-obscureLength)/2)) .. string.rep("*", obscureLength) .. str:sub(len - math.ceil((len-obscureLength)/2) + 1)
 end
 local MASKED_USERNAME = generateMaskedName(USERNAME)
 
@@ -41,39 +35,87 @@ task.spawn(function()
 end)
 
 -- ==================================================================
--- HỆ THỐNG THÔNG BÁO (NOTIFICATION)
+-- HỆ THỐNG AFK MODE (GIAO DIỆN MỚI - FONT PACIFICO)
 -- ==================================================================
-local function SendNotification(title, text, duration)
-    task.spawn(function()
-        local NotifyGui = localPlayer:WaitForChild("PlayerGui"):FindFirstChild("UnfesNotificationGUI") or Instance.new("ScreenGui", localPlayer.PlayerGui)
-        NotifyGui.Name = "UnfesNotificationGUI"
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0, 280, 0, 65)
-        frame.Position = UDim2.new(1, 10, 0.8, 0)
-        frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-        frame.Parent = NotifyGui
-        Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-        local t = Instance.new("TextLabel", frame)
-        t.Size = UDim2.new(1, -20, 0, 25); t.Position = UDim2.new(0, 10, 0, 5); t.Text = title; t.TextColor3 = Color3.new(1,1,1); t.Font = "GothamBold"; t.TextSize = 16; t.BackgroundTransparency = 1; t.TextXAlignment = "Left"
-        local m = Instance.new("TextLabel", frame)
-        m.Size = UDim2.new(1, -20, 0, 25); m.Position = UDim2.new(0, 10, 0, 30); m.Text = text; m.TextColor3 = Color3.fromRGB(200,200,200); m.Font = "Gotham"; m.TextSize = 14; m.BackgroundTransparency = 1; m.TextXAlignment = "Left"
-        frame:TweenPosition(UDim2.new(1, -290, 0.8, 0), "Out", "Quint", 0.5)
-        task.wait(duration or 3)
-        frame:TweenPosition(UDim2.new(1, 10, 0.8, 0), "In", "Quint", 0.5)
-        task.wait(0.5); frame:Destroy()
-    end)
+local afkScreen = Instance.new("ScreenGui", localPlayer.PlayerGui)
+afkScreen.Name = "AFK_Overlay_Pacifico"
+afkScreen.Enabled = false
+afkScreen.DisplayOrder = 999
+
+local afkBg = Instance.new("Frame", afkScreen)
+afkBg.Size = UDim2.new(1, 0, 1, 0)
+afkBg.BackgroundColor3 = Color3.new(0, 0, 0)
+afkBg.BackgroundTransparency = 0.5
+
+-- Hàm tạo Text Pacifico
+local function createPacificoText(name, size, pos, color, scaled)
+    local l = Instance.new("TextLabel", afkBg)
+    l.Name = name
+    l.Size = size
+    l.Position = pos
+    l.AnchorPoint = Vector2.new(0.5, 0.5)
+    l.TextColor3 = color
+    l.BackgroundTransparency = 1
+    -- Sử dụng font Pacifico chính thức của Roblox
+    l.FontFace = Font.new("rbxasset://fonts/families/Pacifico.json")
+    if scaled then l.TextScaled = true else l.TextSize = 30 end
+    return l
 end
 
+-- Cách hàng xa ra bằng việc điều chỉnh tọa độ Y (0.3 -> 0.5 -> 0.65 -> 0.8)
+local afkMainText = createPacificoText("AFK_Title", UDim2.new(0.7, 0, 0.2, 0), UDim2.new(0.5, 0, 0.25, 0), Color3.fromRGB(255, 224, 189), true)
+afkMainText.Text = "AFK Mode"
+
+local afkMapText = createPacificoText("AFK_Map", UDim2.new(1, 0, 0.05, 0), UDim2.new(0.5, 0, 0.45, 0), Color3.fromRGB(255, 255, 180), false)
+afkMapText.Text = "Game: " .. GameName
+
+local afkUserText = createPacificoText("AFK_User", UDim2.new(1, 0, 0.05, 0), UDim2.new(0.5, 0, 0.58, 0), Color3.fromRGB(173, 216, 230), false)
+afkUserText.Text = "Username: " .. MASKED_USERNAME
+
+local afkTimeText = createPacificoText("AFK_Time", UDim2.new(1, 0, 0.05, 0), UDim2.new(0.5, 0, 0.72, 0), Color3.fromRGB(255, 150, 150), false)
+afkTimeText.Text = "Thời gian chơi: 0D:0H:0M:0S"
+
+-- Hàm định dạng thời gian
+local function formatTime(seconds)
+    local days = math.floor(seconds / 86400)
+    local hours = math.floor((seconds % 86400) / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local secs = math.floor(seconds % 60)
+    return string.format("%dD:%dH:%dM:%dS", days, hours, minutes, secs)
+end
+
+local blurEffect = Instance.new("BlurEffect", Lighting)
+blurEffect.Size = 0
+
+local function toggleAFK(state)
+    afkScreen.Enabled = state
+    blurEffect.Size = state and 25 or 0
+    if state then
+        -- Cập nhật thời gian liên tục khi đang AFK
+        task.spawn(function()
+            while afkScreen.Enabled do
+                afkTimeText.Text = "Thời gian chơi: " .. formatTime(tick() - StartTime)
+                task.wait(1)
+            end
+        end)
+    end
+end
+
+-- Thoát AFK khi click hoặc nhấn phím
+game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if afkScreen.Enabled and (input.UserInputType == Enum.UserInputType.Keyboard or input.UserInputType == Enum.UserInputType.MouseButton1) then
+        toggleAFK(false)
+    end
+end)
+
 -- ==================================================================
--- MAIN UI (UI GIỮA CŨ)
+-- MAIN UI (GIỮ NGUYÊN UI GIỮA CŨ)
 -- ==================================================================
-local screenGui = Instance.new("ScreenGui")
+local screenGui = Instance.new("ScreenGui", localPlayer.PlayerGui)
 screenGui.Name = "AnimatedRainbowBorderGUI"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
 
 local outerFrame = Instance.new("Frame", screenGui)
-outerFrame.Name = "RainbowBorderFrame"
 outerFrame.Size = UDim2.new(0.45, 0, 0.15, 0) 
 outerFrame.Position = UDim2.new(0.5, 0, 0.05, 0) 
 outerFrame.AnchorPoint = Vector2.new(0.5, 0)
@@ -89,7 +131,6 @@ innerFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 innerFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 innerFrame.BackgroundColor3 = Color3.new(0, 0, 0)
 innerFrame.BackgroundTransparency = transparencyLevel
-innerFrame.ClipsDescendants = true 
 Instance.new("UICorner", innerFrame).CornerRadius = UDim.new(0, outerCornerRadius - borderThickness)
 
 local listLayout = Instance.new("UIListLayout", innerFrame)
@@ -98,209 +139,97 @@ listLayout.Padding = UDim.new(0, 5); listLayout.HorizontalAlignment = "Center"
 local headerFrame = Instance.new("Frame", innerFrame)
 headerFrame.Size = UDim2.new(1, -15, 0.25, 0); headerFrame.BackgroundTransparency = 1
 
-local usernameLabel = Instance.new("TextLabel", headerFrame)
-usernameLabel.Size = UDim2.new(0.3, 0, 1, 0); usernameLabel.Text = "User: "..MASKED_USERNAME; usernameLabel.TextColor3 = Color3.new(0.8,0.8,0.8); usernameLabel.TextSize = FONT_SIZE; usernameLabel.Font = "SourceSansBold"; usernameLabel.BackgroundTransparency = 1; usernameLabel.TextXAlignment = "Left"
+local userL = Instance.new("TextLabel", headerFrame)
+userL.Size = UDim2.new(0.3, 0, 1, 0); userL.Text = "User: "..MASKED_USERNAME; userL.TextColor3 = Color3.new(0.8,0.8,0.8); userL.TextSize = FONT_SIZE; userL.Font = "SourceSansBold"; userL.BackgroundTransparency = 1; userL.TextXAlignment = "Left"
 
-local mapNameLabel = Instance.new("TextLabel", headerFrame)
-mapNameLabel.Size = UDim2.new(0.5, 0, 1, 0); mapNameLabel.Position = UDim2.new(0.3,0,0,0); mapNameLabel.Text = GameName; mapNameLabel.TextColor3 = Color3.new(0.8,0.8,0.8); mapNameLabel.TextSize = FONT_SIZE; mapNameLabel.Font = "SourceSansBold"; mapNameLabel.BackgroundTransparency = 1; mapNameLabel.TextXAlignment = "Center"
+local mapL = Instance.new("TextLabel", headerFrame)
+mapL.Size = UDim2.new(0.5, 0, 1, 0); mapL.Position = UDim2.new(0.3,0,0,0); mapL.Text = "Loading Map..."; mapL.TextColor3 = Color3.new(0.8,0.8,0.8); mapL.TextSize = FONT_SIZE; mapL.Font = "SourceSansBold"; mapL.BackgroundTransparency = 1; mapL.TextXAlignment = "Center"
 
-local fpsLabel = Instance.new("TextLabel", headerFrame)
-fpsLabel.Size = UDim2.new(0.2, 0, 1, 0); fpsLabel.Position = UDim2.new(1,0,0,0); fpsLabel.AnchorPoint = Vector2.new(1,0); fpsLabel.Text = "FPS: 0"; fpsLabel.TextColor3 = Color3.fromRGB(0,255,127); fpsLabel.TextSize = FONT_SIZE; fpsLabel.Font = "SourceSansBold"; fpsLabel.BackgroundTransparency = 1; fpsLabel.TextXAlignment = "Right"
-
-local scroll = Instance.new("ScrollingFrame", innerFrame)
-scroll.Size = UDim2.new(1, 0, 0.65, 0); scroll.BackgroundTransparency = 1; scroll.ScrollBarThickness = 5
-
-local noteTextBox = Instance.new("TextBox", scroll)
-noteTextBox.Size = UDim2.new(1, -10, 0, 0); noteTextBox.Position = UDim2.new(0,5,0,0); noteTextBox.Text = ""; noteTextBox.PlaceholderText = "Script by HuyUnfes"; noteTextBox.TextColor3 = Color3.new(1,1,1); noteTextBox.MultiLine = true; noteTextBox.TextWrapped = true; noteTextBox.TextSize = NOTE_FONT_SIZE; noteTextBox.Font = "SourceSans"; noteTextBox.BackgroundTransparency = 1; noteTextBox.TextXAlignment = "Left"; noteTextBox.TextYAlignment = "Top"
-
--- ==================================================================
--- HỆ THỐNG AFK MODE (YÊU CẦU MỚI)
--- ==================================================================
-local afkScreen = Instance.new("ScreenGui", localPlayer.PlayerGui)
-afkScreen.Name = "AFK_Overlay"
-afkScreen.Enabled = false
-afkScreen.DisplayOrder = 999
-
-local afkBg = Instance.new("Frame", afkScreen)
-afkBg.Size = UDim2.new(1, 0, 1, 0)
-afkBg.BackgroundColor3 = Color3.new(0, 0, 0)
-afkBg.BackgroundTransparency = 0.5
-
-local afkMainText = Instance.new("TextLabel", afkBg)
-afkMainText.Size = UDim2.new(0.7, 0, 0.2, 0)
-afkMainText.Position = UDim2.new(0.5, 0, 0.35, 0)
-afkMainText.AnchorPoint = Vector2.new(0.5, 0.5)
-afkMainText.Text = "AFK MODE"
-afkMainText.TextColor3 = Color3.fromRGB(255, 224, 189) -- Màu da
-afkMainText.TextScaled = true
-afkMainText.Font = "GothamBold"
-afkMainText.BackgroundTransparency = 1
-
-local afkMapText = Instance.new("TextLabel", afkBg)
-afkMapText.Size = UDim2.new(1, 0, 0.05, 0)
-afkMapText.Position = UDim2.new(0.5, 0, 0.48, 0)
-afkMapText.AnchorPoint = Vector2.new(0.5, 0.5)
-afkMapText.Text = "Game: " .. GameName
-afkMapText.TextColor3 = Color3.fromRGB(255, 255, 180) -- Vàng nhạt
-afkMapText.TextSize = 25
-afkMapText.Font = "GothamBold"
-afkMapText.BackgroundTransparency = 1
-
-local afkUserText = Instance.new("TextLabel", afkBg)
-afkUserText.Size = UDim2.new(1, 0, 0.05, 0)
-afkUserText.Position = UDim2.new(0.5, 0, 0.53, 0)
-afkUserText.AnchorPoint = Vector2.new(0.5, 0.5)
-afkUserText.Text = "Username: " .. MASKED_USERNAME
-afkUserText.TextColor3 = Color3.fromRGB(173, 216, 230) -- Xanh nhạt
-afkUserText.TextSize = 22
-afkUserText.Font = "Gotham"
-afkUserText.BackgroundTransparency = 1
-
-local afkTimeText = Instance.new("TextLabel", afkBg)
-afkTimeText.Size = UDim2.new(1, 0, 0.05, 0)
-afkTimeText.Position = UDim2.new(0.5, 0, 0.58, 0)
-afkTimeText.AnchorPoint = Vector2.new(0.5, 0.5)
-afkTimeText.Text = "Thời gian chơi: 0D:0H:0M:0S"
-afkTimeText.TextColor3 = Color3.fromRGB(255, 150, 150) -- Đỏ nhạt
-afkTimeText.TextSize = 22
-afkTimeText.Font = "Gotham"
-afkTimeText.BackgroundTransparency = 1
-
-local exitHint = Instance.new("TextLabel", afkBg)
-exitHint.Size = UDim2.new(1, 0, 0.1, 0)
-exitHint.Position = UDim2.new(0.5, 0, 0.9, 0)
-exitHint.AnchorPoint = Vector2.new(0.5, 0.5)
-exitHint.Text = "(Nhấn nút bất kỳ để thoát AFK)"
-exitHint.TextColor3 = Color3.new(1, 1, 1)
-exitHint.TextTransparency = 0.5
-exitHint.TextSize = 18
-exitHint.BackgroundTransparency = 1
-
--- Hàm định dạng thời gian
-local function formatTime(seconds)
-    local days = math.floor(seconds / 86400)
-    local hours = math.floor((seconds % 86400) / 3600)
-    local minutes = math.floor((seconds % 3600) / 60)
-    local secs = math.floor(seconds % 60)
-    return string.format("%dD:%dH:%dM:%dS", days, hours, minutes, secs)
-end
-
--- Hiệu ứng làm mờ
-local blurEffect = Instance.new("BlurEffect")
-blurEffect.Size = 0
-blurEffect.Parent = Lighting
-
-local function toggleAFK(state)
-    afkScreen.Enabled = state
-    blurEffect.Size = state and 24 or 0
-    if state then
-        screenGui.Enabled = false
-        -- Vòng lặp cập nhật thời gian
-        task.spawn(function()
-            while afkScreen.Enabled do
-                afkTimeText.Text = "Thời gian chơi: " .. formatTime(tick() - StartTime)
-                afkMapText.Text = "Game: " .. GameName
-                task.wait(1)
-            end
-        end)
-    else
-        screenGui.Enabled = true
-    end
-end
-
--- Thoát AFK khi nhấn phím
-game:GetService("UserInputService").InputBegan:Connect(function(input)
-    if afkScreen.Enabled and (input.UserInputType == Enum.UserInputType.Keyboard or input.UserInputType == Enum.UserInputType.MouseButton1) then
-        toggleAFK(false)
-    end
+task.spawn(function()
+    while GameName == "Loading..." do task.wait(0.5) end
+    mapL.Text = GameName
 end)
 
+local fpsL = Instance.new("TextLabel", headerFrame)
+fpsL.Size = UDim2.new(0.2, 0, 1, 0); fpsL.Position = UDim2.new(1,0,0,0); fpsL.AnchorPoint = Vector2.new(1,0); fpsL.Text = "FPS: 0"; fpsL.TextColor3 = Color3.fromRGB(0,255,127); fpsL.TextSize = FONT_SIZE; fpsL.Font = "SourceSansBold"; fpsL.BackgroundTransparency = 1; fpsL.TextXAlignment = "Right"
+
+local scroll = Instance.new("ScrollingFrame", innerFrame)
+scroll.Size = UDim2.new(1, 0, 0.65, 0); scroll.BackgroundTransparency = 1; scroll.ScrollBarThickness = 3
+
+local note = Instance.new("TextBox", scroll)
+note.Size = UDim2.new(1, -10, 1, 0); note.Position = UDim2.new(0,5,0,0); note.Text = ""; note.PlaceholderText = "Script by HuyUnfes"; note.TextColor3 = Color3.new(1,1,1); note.MultiLine = true; note.TextWrapped = true; note.TextSize = NOTE_FONT_SIZE; note.Font = "SourceSans"; note.BackgroundTransparency = 1; note.TextXAlignment = "Left"; note.TextYAlignment = "Top"
+
 -- ==================================================================
--- BẢNG THÔNG BÁO XÁC NHẬN AFK
+-- THÔNG BÁO XÁC NHẬN AFK
 -- ==================================================================
 local function ShowAFKPrompt()
-    local promptFrame = Instance.new("Frame", screenGui)
-    promptFrame.Size = UDim2.new(0, 300, 0, 150)
-    promptFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    promptFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    promptFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    promptFrame.BorderSizePixel = 0
-    Instance.new("UICorner", promptFrame).CornerRadius = UDim.new(0, 10)
+    local prompt = Instance.new("Frame", screenGui)
+    prompt.Size = UDim2.new(0, 300, 0, 120)
+    prompt.Position = UDim2.new(0.5, 0, 0.5, 0)
+    prompt.AnchorPoint = Vector2.new(0.5, 0.5)
+    prompt.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Instance.new("UICorner", prompt)
 
-    local title = Instance.new("TextLabel", promptFrame)
-    title.Size = UDim2.new(1, 0, 0.5, 0)
-    title.Text = "Do you want turn on AFK Mode?"
-    title.TextColor3 = Color3.new(1, 1, 1)
-    title.TextSize = 18
-    title.Font = "GothamBold"
-    title.TextWrapped = true
-    title.BackgroundTransparency = 1
+    local txt = Instance.new("TextLabel", prompt)
+    txt.Size = UDim2.new(1, 0, 0.6, 0)
+    txt.Text = "Do you want turn on AFK Mode?"
+    txt.TextColor3 = Color3.new(1, 1, 1)
+    txt.Font = "GothamBold"
+    txt.TextSize = 16
+    txt.BackgroundTransparency = 1
 
-    local yesBtn = Instance.new("TextButton", promptFrame)
-    yesBtn.Size = UDim2.new(0.4, 0, 0.3, 0)
-    yesBtn.Position = UDim2.new(0.1, 0, 0.6, 0)
-    yesBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-    yesBtn.Text = "Yes"
-    yesBtn.TextColor3 = Color3.new(1, 1, 1)
-    Instance.new("UICorner", yesBtn)
+    local function createBtn(t, pos, color)
+        local b = Instance.new("TextButton", prompt)
+        b.Size = UDim2.new(0.4, 0, 0.3, 0)
+        b.Position = pos
+        b.Text = t
+        b.BackgroundColor3 = color
+        b.TextColor3 = Color3.new(1, 1, 1)
+        Instance.new("UICorner", b)
+        return b
+    end
 
-    local noBtn = Instance.new("TextButton", promptFrame)
-    noBtn.Size = UDim2.new(0.4, 0, 0.3, 0)
-    noBtn.Position = UDim2.new(0.5, 0, 0.6, 0)
-    noBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-    noBtn.Text = "No"
-    noBtn.TextColor3 = Color3.new(1, 1, 1)
-    Instance.new("UICorner", noBtn)
+    local yes = createBtn("Yes", UDim2.new(0.05, 0, 0.6, 0), Color3.fromRGB(50, 150, 50))
+    local no = createBtn("No", UDim2.new(0.55, 0, 0.6, 0), Color3.fromRGB(150, 50, 50))
 
-    yesBtn.MouseButton1Click:Connect(function()
-        promptFrame:Destroy()
-        toggleAFK(true)
-    end)
-
-    noBtn.MouseButton1Click:Connect(function()
-        promptFrame:Destroy()
-    end)
+    yes.MouseButton1Click:Connect(function() prompt:Destroy(); toggleAFK(true) end)
+    no.MouseButton1Click:Connect(function() prompt:Destroy() end)
 end
 
 -- ==================================================================
--- SIDE MENU CẬP NHẬT
+-- SIDE MENU
 -- ==================================================================
 local toggleSideBtn = Instance.new("TextButton", outerFrame)
 toggleSideBtn.Size = UDim2.new(0, 25, 0, 60); toggleSideBtn.Position = UDim2.new(1, 0, 0.5, -30); toggleSideBtn.BackgroundColor3 = Color3.fromRGB(20,20,20); toggleSideBtn.Text = ">"; toggleSideBtn.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", toggleSideBtn).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", toggleSideBtn)
 
 local sideMenu = Instance.new("Frame", outerFrame)
 sideMenu.Size = UDim2.new(1, 0, 1.2, 0); sideMenu.Position = UDim2.new(1, 10, 0, 0); sideMenu.BackgroundColor3 = Color3.fromRGB(10, 20, 35); sideMenu.BackgroundTransparency = 0.4; sideMenu.Visible = false
-Instance.new("UICorner", sideMenu).CornerRadius = UDim.new(0, 15)
+Instance.new("UICorner", sideMenu)
 
 local sideLayout = Instance.new("UIListLayout", sideMenu); sideLayout.Padding = UDim.new(0, 5); sideLayout.HorizontalAlignment = "Center"
 Instance.new("UIPadding", sideMenu).PaddingTop = UDim.new(0, 8)
 
-local function createSideBtn(text, color)
+local function sideBtn(t, c)
     local b = Instance.new("TextButton", sideMenu)
-    b.Size = UDim2.new(0.9, 0, 0, 28); b.Text = text; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1,1,1); b.Font = "SourceSansBold"; b.TextSize = 14
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+    b.Size = UDim2.new(0.9, 0, 0, 28); b.Text = t; b.BackgroundColor3 = c; b.TextColor3 = Color3.new(1,1,1); b.Font = "SourceSansBold"; b.TextSize = 14; Instance.new("UICorner", b)
     return b
 end
 
-local jobInput = Instance.new("TextBox", sideMenu)
-jobInput.Size = UDim2.new(0.9, 0, 0, 28); jobInput.PlaceholderText = "Job-ID..."; jobInput.BackgroundColor3 = Color3.fromRGB(30, 40, 60); jobInput.TextColor3 = Color3.new(1,1,1); jobInput.TextSize = 14; Instance.new("UICorner", jobInput)
+local jobIn = Instance.new("TextBox", sideMenu)
+jobIn.Size = UDim2.new(0.9, 0, 0, 28); jobIn.PlaceholderText = "Job-ID..."; jobIn.BackgroundColor3 = Color3.fromRGB(30, 40, 60); jobIn.TextColor3 = Color3.new(1,1,1); jobIn.TextSize = 14; Instance.new("UICorner", jobIn)
 
-local joinBtn = createSideBtn("Join Job-id", Color3.fromRGB(45, 90, 180))
-local clipBtn = createSideBtn("Clipboard Join", Color3.fromRGB(50, 130, 100))
-local afkBtn = createSideBtn("AFK Mode", Color3.fromRGB(180, 130, 50)) -- Nút mở AFK
+sideBtn("Join Job-id", Color3.fromRGB(45, 90, 180)).MouseButton1Click:Connect(function() 
+    TeleportService:TeleportToPlaceInstance(game.PlaceId, jobIn.Text, localPlayer) 
+end)
+sideBtn("AFK Mode", Color3.fromRGB(180, 130, 50)).MouseButton1Click:Connect(ShowAFKPrompt)
 
--- LOGIC
 toggleSideBtn.MouseButton1Click:Connect(function()
     sideMenu.Visible = not sideMenu.Visible
     toggleSideBtn.Text = sideMenu.Visible and "<" or ">"
 end)
 
-afkBtn.MouseButton1Click:Connect(function()
-    ShowAFKPrompt()
-end)
-
--- Hiệu ứng Rainbow & FPS (Vòng lặp cũ)
+-- Rainbow & FPS
 task.spawn(function()
     local h = 0 
     RunService.RenderStepped:Connect(function(dt)
@@ -309,8 +238,6 @@ task.spawn(function()
             ColorSequenceKeypoint.new(0, Color3.fromHSV(h, 1, 1)),
             ColorSequenceKeypoint.new(1, Color3.fromHSV((h + 0.5) % 1, 1, 1))
         })
-        fpsLabel.Text = "FPS: " .. math.floor(1/dt)
+        fpsL.Text = "FPS: " .. math.floor(1/dt)
     end)
 end)
-
-SendNotification("Unfes", "Đã tích hợp AFK Mode!", 3)
