@@ -52,7 +52,7 @@ task.spawn(function()
 end)
 
 -- ==================================================================
--- AFK MODE (PACIFICO FONT & SPACING)
+-- AFK MODE (SỬ DỤNG FONT DANCING SCRIPT & CÁCH HÀNG)
 -- ==================================================================
 local afkScreen = Instance.new("ScreenGui", localPlayer.PlayerGui)
 afkScreen.Name = "AFK_Overlay"
@@ -71,21 +71,23 @@ local function createAfkText(pos, color, size, isTitle)
     l.AnchorPoint = Vector2.new(0.5, 0.5)
     l.TextColor3 = color
     l.BackgroundTransparency = 1
-    -- Cách gọi font Pacifico an toàn hơn cho các Executor
+    
+    -- LOAD FONT DANCING SCRIPT TỪ HỆ THỐNG ROBLOX
     pcall(function()
-        l.FontFace = Font.new("rbxasset://fonts/families/Pacifico.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+        l.FontFace = Font.new("rbxasset://fonts/families/DancingScript.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
     end)
+    
     if isTitle then l.TextScaled = true else l.TextSize = size end
     return l
 end
 
--- Giãn cách hàng cực xa
-local afkTitle = createAfkText(UDim2.new(0.5, 0, 0.25, 0), Color3.fromRGB(255, 224, 189), 0, true)
+-- Giãn cách hàng cực xa theo đúng yêu cầu
+local afkTitle = createAfkText(UDim2.new(0.5, 0, 0.25, 0), Color3.fromRGB(255, 224, 189), 0, true) -- Màu da
 afkTitle.Text = "AFK Mode"
 
-local afkMap = createAfkText(UDim2.new(0.5, 0, 0.45, 0), Color3.fromRGB(255, 255, 180), 30, false)
-local afkUser = createAfkText(UDim2.new(0.5, 0, 0.58, 0), Color3.fromRGB(173, 216, 230), 28, false)
-local afkTime = createAfkText(UDim2.new(0.5, 0, 0.72, 0), Color3.fromRGB(255, 150, 150), 28, false)
+local afkMap = createAfkText(UDim2.new(0.5, 0, 0.45, 0), Color3.fromRGB(255, 255, 180), 32, false) -- Vàng nhạt
+local afkUser = createAfkText(UDim2.new(0.5, 0, 0.58, 0), Color3.fromRGB(173, 216, 230), 28, false) -- Xanh nhạt
+local afkTime = createAfkText(UDim2.new(0.5, 0, 0.72, 0), Color3.fromRGB(255, 150, 150), 28, false) -- Đỏ nhạt
 
 local blur = Instance.new("BlurEffect", Lighting)
 blur.Size = 0
@@ -106,6 +108,7 @@ local function toggleAFK(state)
     end
 end
 
+-- Thoát AFK khi nhấn phím hoặc click
 game:GetService("UserInputService").InputBegan:Connect(function(i)
     if afkScreen.Enabled and (i.UserInputType == Enum.UserInputType.Keyboard or i.UserInputType == Enum.UserInputType.MouseButton1) then
         toggleAFK(false)
@@ -113,7 +116,7 @@ game:GetService("UserInputService").InputBegan:Connect(function(i)
 end)
 
 -- ==================================================================
--- MAIN UI GIỮA (GIỮ NGUYÊN BẢN CŨ)
+-- MAIN UI (UI GIỮA CŨ - KHÔNG ĐỔI)
 -- ==================================================================
 local screenGui = Instance.new("ScreenGui", localPlayer.PlayerGui)
 screenGui.ResetOnSpawn = false
@@ -186,6 +189,7 @@ sBtn("AFK Mode", Color3.fromRGB(180,130,50)).MouseButton1Click:Connect(ShowPromp
 
 toggleSide.MouseButton1Click:Connect(function() sideMenu.Visible = not sideMenu.Visible; toggleSide.Text = sideMenu.Visible and "<" or ">" end)
 
+-- Cập nhật Rainbow và FPS
 task.spawn(function()
     local h = 0 
     RunService.RenderStepped:Connect(function(dt)
