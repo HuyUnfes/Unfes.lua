@@ -43,22 +43,22 @@ local function readConfig()
 end
 
 -- ==================================================================
--- AFK MODE (HÌNH NỀN MỜ 70%)
+-- AFK MODE (HÌNH NỀN MỜ 90% - FONT DANCING SCRIPT)
 -- ==================================================================
 local afkScreen = Instance.new("ScreenGui", localPlayer.PlayerGui)
-afkScreen.Name = "AFK_Overlay_URL"
+afkScreen.Name = "AFK_Overlay_Dimmed_90"
 afkScreen.Enabled = false
 afkScreen.IgnoreGuiInset = true 
 afkScreen.DisplayOrder = 999
 
 local afkBg = Instance.new("ImageLabel", afkScreen)
 afkBg.Size = UDim2.new(1, 0, 1, 0)
-afkBg.BackgroundColor3 = Color3.new(0, 0, 0) -- Nền đen phía dưới ảnh
-afkBg.BackgroundTransparency = 0 -- Hiện nền đen để khi ảnh mờ đi sẽ thấy tối lại
+afkBg.BackgroundColor3 = Color3.new(0, 0, 0) -- Nền đen
+afkBg.BackgroundTransparency = 0 
 afkBg.ScaleType = Enum.ScaleType.Crop
-afkBg.ImageTransparency = 0.7 -- LÀM MỜ ẢNH 70% (0.7 TRONG SUỐT)
+afkBg.ImageTransparency = 0.9 -- LÀM MỜ ẢNH 90%
 
--- Hiển thị ảnh sau khi đã tải về
+-- Hiển thị ảnh
 task.spawn(function()
     while not isfile(IMAGE_NAME) do task.wait(0.5) end
     pcall(function()
@@ -74,19 +74,19 @@ local function createAfkLabel(name, pos, color, size, isScaled)
     l.AnchorPoint = Vector2.new(0.5, 0.5)
     l.TextColor3 = color
     l.BackgroundTransparency = 1
-    l.TextStrokeTransparency = 0.4 -- Làm đậm viền chữ một chút để nổi bật trên nền ảnh
+    l.TextStrokeTransparency = 0.5 
     l.FontFace = Font.new("rbxassetid://8764312106") -- Font Dancing Script
     if isScaled then l.TextScaled = true else l.TextSize = size end
     return l
 end
 
--- Giãn cách hàng AFK (Đẩy xa nhau ra đúng yêu cầu)
-local afkTitle = createAfkLabel("Title", UDim2.new(0.5, 0, 0.25, 0), Color3.fromRGB(255, 224, 189), 0, true)
+-- Cách hàng xa nhau (Bố cục Pacifico)
+local afkTitle = createAfkLabel("Title", UDim2.new(0.5, 0, 0.25, 0), Color3.fromRGB(255, 224, 189), 0, true) -- Màu da
 afkTitle.Text = "AFK Mode"
 
-local afkMap = createAfkLabel("Map", UDim2.new(0.5, 0, 0.45, 0), Color3.fromRGB(255, 255, 180), 32, false)
-local afkUser = createAfkLabel("User", UDim2.new(0.5, 0, 0.58, 0), Color3.fromRGB(173, 216, 230), 28, false)
-local afkTime = createAfkLabel("Time", UDim2.new(0.5, 0, 0.72, 0), Color3.fromRGB(255, 150, 150), 28, false)
+local afkMap = createAfkLabel("Map", UDim2.new(0.5, 0, 0.45, 0), Color3.fromRGB(255, 255, 180), 32, false) -- Vàng nhạt
+local afkUser = createAfkLabel("User", UDim2.new(0.5, 0, 0.58, 0), Color3.fromRGB(173, 216, 230), 28, false) -- Xanh nhạt
+local afkTime = createAfkLabel("Time", UDim2.new(0.5, 0, 0.72, 0), Color3.fromRGB(255, 150, 150), 28, false) -- Đỏ nhạt
 
 local function generateMaskedName(str)
     local len = #str
@@ -103,7 +103,6 @@ end)
 
 local function toggleAFK(state)
     afkScreen.Enabled = state
-    -- Không sử dụng Blur quá nhiều để tránh làm giảm độ nét của ảnh mờ
     if state then
         task.spawn(function()
             while afkScreen.Enabled do
