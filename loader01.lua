@@ -18,7 +18,7 @@ local CONFIG_FILE_NAME = "Unfes_" .. USERNAME .. ".txt"
 local IMAGE_NAME = "AFK_Background_HuyUnfes.webp"
 local IMAGE_URL = "https://images5.alphacoders.com/135/thumb-350-1351993.webp"
 
--- Hàm tải ảnh từ Web về máy (Chỉ tải 1 lần)
+-- Hàm tải ảnh từ Web về máy
 local function downloadBackground()
     if writefile and readfile and not isfile(IMAGE_NAME) then
         pcall(function()
@@ -43,7 +43,7 @@ local function readConfig()
 end
 
 -- ==================================================================
--- AFK MODE (HÌNH NỀN TỪ LINK WEB)
+-- AFK MODE (HÌNH NỀN MỜ 70%)
 -- ==================================================================
 local afkScreen = Instance.new("ScreenGui", localPlayer.PlayerGui)
 afkScreen.Name = "AFK_Overlay_URL"
@@ -53,8 +53,10 @@ afkScreen.DisplayOrder = 999
 
 local afkBg = Instance.new("ImageLabel", afkScreen)
 afkBg.Size = UDim2.new(1, 0, 1, 0)
-afkBg.BackgroundColor3 = Color3.new(0, 0, 0)
+afkBg.BackgroundColor3 = Color3.new(0, 0, 0) -- Nền đen phía dưới ảnh
+afkBg.BackgroundTransparency = 0 -- Hiện nền đen để khi ảnh mờ đi sẽ thấy tối lại
 afkBg.ScaleType = Enum.ScaleType.Crop
+afkBg.ImageTransparency = 0.7 -- LÀM MỜ ẢNH 70% (0.7 TRONG SUỐT)
 
 -- Hiển thị ảnh sau khi đã tải về
 task.spawn(function()
@@ -72,13 +74,13 @@ local function createAfkLabel(name, pos, color, size, isScaled)
     l.AnchorPoint = Vector2.new(0.5, 0.5)
     l.TextColor3 = color
     l.BackgroundTransparency = 1
-    l.TextStrokeTransparency = 0.5 
+    l.TextStrokeTransparency = 0.4 -- Làm đậm viền chữ một chút để nổi bật trên nền ảnh
     l.FontFace = Font.new("rbxassetid://8764312106") -- Font Dancing Script
     if isScaled then l.TextScaled = true else l.TextSize = size end
     return l
 end
 
--- Giãn cách hàng AFK (Pacifico Layout)
+-- Giãn cách hàng AFK (Đẩy xa nhau ra đúng yêu cầu)
 local afkTitle = createAfkLabel("Title", UDim2.new(0.5, 0, 0.25, 0), Color3.fromRGB(255, 224, 189), 0, true)
 afkTitle.Text = "AFK Mode"
 
@@ -99,12 +101,9 @@ task.spawn(function()
     pcall(function() GameName = MarketplaceService:GetProductInfo(game.PlaceId).Name end)
 end)
 
-local blur = Instance.new("BlurEffect", Lighting)
-blur.Size = 0
-
 local function toggleAFK(state)
     afkScreen.Enabled = state
-    blur.Size = state and 12 or 0 
+    -- Không sử dụng Blur quá nhiều để tránh làm giảm độ nét của ảnh mờ
     if state then
         task.spawn(function()
             while afkScreen.Enabled do
@@ -125,7 +124,7 @@ UserInputService.InputBegan:Connect(function(i)
 end)
 
 -- ==================================================================
--- MAIN UI & SIDE MENU (GIỮ NGUYÊN)
+-- MAIN UI & SIDE MENU (GIỮ NGUYÊN UI GIỮA CŨ)
 -- ==================================================================
 local screenGui = Instance.new("ScreenGui", localPlayer.PlayerGui)
 screenGui.ResetOnSpawn = false
