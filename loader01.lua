@@ -14,9 +14,9 @@ local StartTime = tick()
 -- HỆ THỐNG FILE & TẢI ẢNH TỪ URL
 -- ==================================================================
 local USERNAME = localPlayer.Name
-local CONFIG_FILE_NAME = "Unfes_" .. USERNAME .. ".txt"
-local IMAGE_NAME = "AFK_Background_HuyUnfes.webp"
-local IMAGE_URL = "https://images5.alphacoders.com/135/thumb-350-1351993.webp"
+local CONFIG_FILE_NAME = "Unfes_Exviun_" .. USERNAME .. ".txt"
+local IMAGE_NAME = "AFK_Mode.jpeg"
+local IMAGE_URL = "https://raw.githubusercontent.com/HuyUnfes/Unfes.lua/refs/heads/main/1351993.jpeg"
 
 local function downloadBackground()
     if writefile and readfile and not isfile(IMAGE_NAME) then
