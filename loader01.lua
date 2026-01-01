@@ -1,20 +1,17 @@
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
-local TextService = game:GetService("TextService") 
+local TextService = game:GetService("TextService")
 local Lighting = game:GetService("Lighting")
 local MarketplaceService = game:GetService("MarketplaceService")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
-local VirtualUser = game:GetService("VirtualUser")
 
 local StartTime = tick()
-local AFK_Started_Time = 0
-local Is_Spamming_Join = false
 
 -- ==================================================================
--- HỆ THỐNG FILE & CONFIG
+-- HỆ THỐNG FILE & TẢI ẢNH TỪ URL
 -- ==================================================================
 local USERNAME = localPlayer.Name
 local CONFIG_FILE_NAME = "Unfes_Exviun_" .. USERNAME .. ".txt"
@@ -22,200 +19,209 @@ local IMAGE_NAME = "AFK_Mode.jpeg"
 local IMAGE_URL = "https://raw.githubusercontent.com/HuyUnfes/Unfes.lua/refs/heads/main/1351993.jpeg"
 
 local function downloadBackground()
-    if writefile and readfile and not isfile(IMAGE_NAME) then
-        pcall(function()
-            local success, content = pcall(function() return game:HttpGet(IMAGE_URL) end)
-            if success then writefile(IMAGE_NAME, content) end
-        end)
-    end
+if writefile and readfile and not isfile(IMAGE_NAME) then
+pcall(function()
+local success, content = pcall(function() return game:HttpGet(IMAGE_URL) end)
+if success then writefile(IMAGE_NAME, content) end
+end)
+end
 end
 task.spawn(downloadBackground)
 
--- ==================================================================
--- ANTI-AFK LOGIC
--- ==================================================================
-local function SetAntiAfk(state)
-    if state then
-        if _G.AntiAfkConnection then _G.AntiAfkConnection:Disconnect() end
-        _G.AntiAfkConnection = localPlayer.Idled:Connect(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end)
-    else
-        if _G.AntiAfkConnection then _G.AntiAfkConnection:Disconnect() end
-    end
+local function saveConfig(content)
+pcall(function() if writefile then writefile(CONFIG_FILE_NAME, tostring(content)) end end)
+end
+
+local function readConfig()
+local success, content = pcall(function()
+if isfile and isfile(CONFIG_FILE_NAME) then return readfile(CONFIG_FILE_NAME) end
+end)
+return (success and content) or "Script by HuyUnfes"
 end
 
 -- ==================================================================
--- AFK MODE UI (NÂNG CẤP)
+-- AFK MODE (NHÌN XUYÊN THẤU + NÚT X TẮT)
 -- ==================================================================
 local afkScreen = Instance.new("ScreenGui", localPlayer.PlayerGui)
-afkScreen.Name = "AFK_Overlay_Premium"
+afkScreen.Name = "AFK_Overlay_Final_X"
 afkScreen.Enabled = false
-afkScreen.IgnoreGuiInset = true 
+afkScreen.IgnoreGuiInset = true
+afkScreen.DisplayOrder = 999
 
 local afkBg = Instance.new("ImageLabel", afkScreen)
 afkBg.Size = UDim2.new(1, 0, 1, 0)
-afkBg.BackgroundTransparency = 1
-afkBg.ImageTransparency = 0.7
+afkBg.BackgroundTransparency = 1 -- Trong suốt để thấy game
 afkBg.ScaleType = Enum.ScaleType.Crop
+afkBg.ImageTransparency = 0.7 -- Ảnh mờ 70%
 
 task.spawn(function()
-    while not isfile(IMAGE_NAME) do task.wait(0.5) end
-    pcall(function() afkBg.Image = getcustomasset(IMAGE_NAME) end)
+while not isfile(IMAGE_NAME) do task.wait(0.5) end
+pcall(function() afkBg.Image = getcustomasset(IMAGE_NAME) end)
 end)
 
--- Nút X thiết kế sang trọng
-local exitAfkBtn = Instance.new("TextButton", afkBg)
-exitAfkBtn.Size = UDim2.new(0, 50, 0, 50)
-exitAfkBtn.Position = UDim2.new(0.5, 0, 0.1, 0)
-exitAfkBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-exitAfkBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-exitAfkBtn.Text = "×"
-exitAfkBtn.TextColor3 = Color3.new(1, 1, 1)
-exitAfkBtn.TextSize = 40
-Instance.new("UICorner", exitAfkBtn).CornerRadius = UDim.new(1, 0)
-local xStroke = Instance.new("UIStroke", exitAfkBtn)
-xStroke.Thickness = 2; xStroke.Color = Color3.new(1,1,1)
-
+-- Hàm tạo Label AFK
 local function createAfkLabel(name, pos, color, size, isScaled)
-    local l = Instance.new("TextLabel", afkBg)
-    l.Name = name
-    l.Size = isScaled and UDim2.new(0.8, 0, 0.15, 0) or UDim2.new(1, 0, 0.05, 0)
-    l.Position = pos
-    l.AnchorPoint = Vector2.new(0.5, 0.5)
-    l.TextColor3 = color
-    l.BackgroundTransparency = 1
-    l.TextStrokeTransparency = 0.6
-    l.FontFace = Font.new("rbxassetid://8764312106") -- Dancing Script
-    if isScaled then l.TextScaled = true else l.TextSize = size end
-    return l
+local l = Instance.new("TextLabel", afkBg)
+l.Name = name
+l.Size = isScaled and UDim2.new(0.7, 0, 0.2, 0) or UDim2.new(1, 0, 0.05, 0)
+l.Position = pos
+l.AnchorPoint = Vector2.new(0.5, 0.5)
+l.TextColor3 = color
+l.BackgroundTransparency = 1
+l.TextStrokeTransparency = 0.5
+l.FontFace = Font.new("rbxassetid://8764312106") -- Dancing Script
+if isScaled then l.TextScaled = true else l.TextSize = size end
+return l
 end
 
-local afkTitle = createAfkLabel("Title", UDim2.new(0.5, 0, 0.22, 0), Color3.new(1,1,1), 0, true)
+-- 1. NÚT X (ĐỂ TẮT AFK) - Nằm phía trên tiêu đề
+local exitAfkBtn = Instance.new("TextButton", afkBg)
+exitAfkBtn.Name = "ExitAFK"
+exitAfkBtn.Size = UDim2.new(0, 50, 0, 50)
+exitAfkBtn.Position = UDim2.new(0.5, 0, 0.12, 0) -- Nằm trên tiêu đề (Y=0.12)
+exitAfkBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+exitAfkBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+exitAfkBtn.BackgroundTransparency = 0.8
+exitAfkBtn.Text = "X"
+exitAfkBtn.TextColor3 = Color3.new(1, 1, 1)
+exitAfkBtn.Font = Enum.Font.GothamBold
+exitAfkBtn.TextSize = 30
+local btnCorner = Instance.new("UICorner", exitAfkBtn)
+btnCorner.CornerRadius = UDim.new(1, 0) -- Nút hình tròn
+
+-- 2. TIÊU ĐỀ VÀ THÔNG TIN (Cách hàng xa nhau)
+local afkTitle = createAfkLabel("Title", UDim2.new(0.5, 0, 0.25, 0), Color3.fromRGB(255, 224, 189), 0, true)
 afkTitle.Text = "AFK Mode"
-local afkMap = createAfkLabel("Map", UDim2.new(0.5, 0, 0.40, 0), Color3.fromRGB(255, 255, 180), 32, false)
-local afkUser = createAfkLabel("User", UDim2.new(0.5, 0, 0.50, 0), Color3.fromRGB(173, 216, 230), 28, false)
-local afkTime = createAfkLabel("Time", UDim2.new(0.5, 0, 0.60, 0), Color3.fromRGB(255, 150, 150), 28, false)
-local afkTotal = createAfkLabel("Total", UDim2.new(0.5, 0, 0.70, 0), Color3.fromRGB(150, 255, 150), 28, false)
+
+local afkMap = createAfkLabel("Map", UDim2.new(0.5, 0, 0.45, 0), Color3.fromRGB(255, 255, 180), 32, false)
+local afkUser = createAfkLabel("User", UDim2.new(0.5, 0, 0.58, 0), Color3.fromRGB(173, 216, 230), 28, false)
+local afkTime = createAfkLabel("Time", UDim2.new(0.5, 0, 0.72, 0), Color3.fromRGB(255, 150, 150), 28, false)
+
+local function generateMaskedName(str)
+local len = #str
+if len <= 3 then return str end
+local obs = math.ceil(len / 2)
+return str:sub(1, math.ceil((len-obs)/2)) .. string.rep("*", obs) .. str:sub(len - math.floor((len-obs)/2) + 1)
+end
+local MASKED_USERNAME = generateMaskedName(USERNAME)
+
+local GameName = "Loading..."
+task.spawn(function()
+pcall(function() GameName = MarketplaceService:GetProductInfo(game.PlaceId).Name end)
+end)
 
 local function toggleAFK(state)
-    afkScreen.Enabled = state
-    SetAntiAfk(state) -- Tự động bật/tắt Anti-AFK
-    if state then
-        AFK_Started_Time = tick()
-        task.spawn(function()
-            while afkScreen.Enabled do
-                local session = tick() - StartTime
-                local afkDuration = tick() - AFK_Started_Time
-                afkTime.Text = string.format("AFK Duration: %dM:%dS", math.floor(afkDuration/60), math.floor(afkDuration%60))
-                afkTotal.Text = string.format("Total Session: %dH:%dM:%dS", math.floor(session/3600), math.floor((session%3600)/60), math.floor(session%60))
-                afkUser.Text = "User: " .. USERNAME
-                task.wait(1)
-            end
-        end)
-    end
+afkScreen.Enabled = state
+if state then
+task.spawn(function()
+while afkScreen.Enabled do
+local s = tick() - StartTime
+afkTime.Text = string.format("Thời gian chơi: %dD:%dH:%dM:%dS", math.floor(s/86400), math.floor((s%86400)/3600), math.floor((s%3600)/60), math.floor(s%60))
+afkMap.Text = "Game: " .. GameName
+afkUser.Text = "Username: " .. MASKED_USERNAME
+task.wait(1)
 end
-exitAfkBtn.MouseButton1Click:Connect(function() toggleAFK(false) end)
+end)
+end
+end
+
+-- LOGIC TẮT AFK: Nhấn nút X
+exitAfkBtn.MouseButton1Click:Connect(function()
+toggleAFK(false)
+end)
+
+-- Vẫn giữ phím bất kỳ để tắt (nếu bạn muốn xóa thì xóa phần này)
+UserInputService.InputBegan:Connect(function(i)
+if afkScreen.Enabled and (i.UserInputType == Enum.UserInputType.Keyboard or i.UserInputType == Enum.UserInputType.MouseButton1) then
+if i.Target ~= exitAfkBtn then -- Chỉ tắt khi không phải đang bấm nút X (tránh trùng lặp)
+toggleAFK(false)
+end
+end
+end)
 
 -- ==================================================================
--- MAIN UI & SIDE MENU (ĐẸP HƠN)
+-- MAIN UI & SIDE MENU (GIỮ NGUYÊN)
 -- ==================================================================
 local screenGui = Instance.new("ScreenGui", localPlayer.PlayerGui)
+screenGui.ResetOnSpawn = false
+
 local outerFrame = Instance.new("Frame", screenGui)
-outerFrame.Size = UDim2.new(0.4, 0, 0.14, 0)
+outerFrame.Size = UDim2.new(0.45, 0, 0.15, 0)
 outerFrame.Position = UDim2.new(0.5, 0, 0.05, 0)
 outerFrame.AnchorPoint = Vector2.new(0.5, 0)
-outerFrame.BackgroundColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", outerFrame)
+outerFrame.BackgroundColor3 = Color3.new(1, 1, 1)
+outerFrame.Draggable = true
+outerFrame.Active = true
+Instance.new("UICorner", outerFrame).CornerRadius = UDim.new(0, 15)
 local uiGradient = Instance.new("UIGradient", outerFrame)
 
 local innerFrame = Instance.new("Frame", outerFrame)
-innerFrame.Size = UDim2.new(1, -6, 1, -6); innerFrame.Position = UDim2.new(0.5,0,0.5,0); innerFrame.AnchorPoint = Vector2.new(0.5,0.5); innerFrame.BackgroundColor3 = Color3.fromRGB(15,15,15)
-Instance.new("UICorner", innerFrame)
+innerFrame.Size = UDim2.new(1, -6, 1, -6)
+innerFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+innerFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+innerFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+innerFrame.BackgroundTransparency = 0.3
+Instance.new("UICorner", innerFrame).CornerRadius = UDim.new(0, 12)
 
--- SIDE MENU DESIGN
-local sideMenu = Instance.new("Frame", outerFrame)
-sideMenu.Size = UDim2.new(0.7, 0, 2.5, 0)
-sideMenu.Position = UDim2.new(1, 15, 0, 0)
-sideMenu.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-sideMenu.Visible = false
-local sideCorner = Instance.new("UICorner", sideMenu)
-local sideStroke = Instance.new("UIStroke", sideMenu)
-sideStroke.Color = Color3.fromRGB(60, 60, 70); sideStroke.Thickness = 2
+local header = Instance.new("Frame", innerFrame)
+header.Size = UDim2.new(1, -15, 0.25, 0); header.BackgroundTransparency = 1
+Instance.new("UIListLayout", innerFrame).HorizontalAlignment = "Center"
 
-local sideLayout = Instance.new("UIListLayout", sideMenu)
-sideLayout.Padding = UDim.new(0, 10); sideLayout.HorizontalAlignment = "Center"
-Instance.new("UIPadding", sideMenu).PaddingTop = UDim.new(0, 12)
+local userL = Instance.new("TextLabel", header)
+userL.Size = UDim2.new(0.3, 0, 1, 0); userL.Text = "User: "..MASKED_USERNAME; userL.TextColor3 = Color3.new(0.8,0.8,0.8); userL.TextSize = 20; userL.Font = "SourceSansBold"; userL.BackgroundTransparency = 1; userL.TextXAlignment = "Left"
 
--- Các thành phần Side Menu
-local jobIn = Instance.new("TextBox", sideMenu)
-jobIn.Size = UDim2.new(0.9, 0, 0, 35)
-jobIn.PlaceholderText = "Job-ID Here..."
-jobIn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-jobIn.TextColor3 = Color3.new(1, 1, 1)
-Instance.new("UICorner", jobIn)
+local mapL = Instance.new("TextLabel", header)
+mapL.Size = UDim2.new(0.4, 0, 1, 0); mapL.Position = UDim2.new(0.3,0,0,0); mapL.Text = "Loading..."; mapL.TextColor3 = Color3.new(0.8,0.8,0.8); mapL.TextSize = 20; mapL.Font = "SourceSansBold"; mapL.BackgroundTransparency = 1
 
-local function styledBtn(text, color)
-    local btn = Instance.new("TextButton", sideMenu)
-    btn.Size = UDim2.new(0.9, 0, 0, 35)
-    btn.Text = text
-    btn.BackgroundColor3 = color
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14
-    Instance.new("UICorner", btn)
-    
-    -- Hiệu ứng Hover
-    btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.3}):Play() end)
-    btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play() end)
-    return btn
+local fpsL = Instance.new("TextLabel", header)
+fpsL.Size = UDim2.new(0.3, 0, 1, 0); fpsL.Position = UDim2.new(1,0,0,0); fpsL.AnchorPoint = Vector2.new(1,0); fpsL.Text = "FPS: 0"; fpsL.TextColor3 = Color3.fromRGB(0,255,127); fpsL.TextSize = 20; fpsL.Font = "SourceSansBold"; fpsL.BackgroundTransparency = 1; fpsL.TextXAlignment = "Right"
+
+local scroll = Instance.new("ScrollingFrame", innerFrame)
+scroll.Size = UDim2.new(1, 0, 0.65, 0); scroll.BackgroundTransparency = 1; scroll.ScrollBarThickness = 3
+
+local note = Instance.new("TextBox", scroll)
+note.Size = UDim2.new(1, -10, 1, 0); note.Position = UDim2.new(0,5,0,0); note.Text = readConfig(); note.PlaceholderText = "Script by HuyUnfes"; note.TextColor3 = Color3.new(1,1,1); note.MultiLine = true; note.TextWrapped = true; note.TextSize = 24; note.Font = "SourceSans"; note.BackgroundTransparency = 1; note.TextXAlignment = "Left"; note.TextYAlignment = "Top"
+note.FocusLost:Connect(function() saveConfig(note.Text) end)
+
+local function ShowPrompt()
+local p = Instance.new("Frame", screenGui); p.Size = UDim2.new(0,280,0,120); p.Position = UDim2.new(0.5,0,0.5,0); p.AnchorPoint = Vector2.new(0.5,0.5); p.BackgroundColor3 = Color3.fromRGB(25,25,25); Instance.new("UICorner",p)
+local t = Instance.new("TextLabel",p); t.Size = UDim2.new(1,0,0.6,0); t.Text = "Do you want turn on AFK Mode?"; t.TextColor3 = Color3.new(1,1,1); t.Font = "GothamBold"; t.TextSize = 16; t.BackgroundTransparency = 1; t.TextWrapped = true
+local function btn(txt, pos, col)
+local b = Instance.new("TextButton", p); b.Size = UDim2.new(0.4,0,0.3,0); b.Position = pos; b.Text = txt; b.BackgroundColor3 = col; b.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner",b); return b
+end
+btn("Yes", UDim2.new(0.05,0,0.6,0), Color3.fromRGB(50,150,50)).MouseButton1Click:Connect(function() p:Destroy(); toggleAFK(true) end)
+btn("No", UDim2.new(0.55,0,0.6,0), Color3.fromRGB(150,50,50)).MouseButton1Click:Connect(function() p:Destroy() end)
 end
 
-local joinBtn = styledBtn("Join Job-ID", Color3.fromRGB(50, 100, 200))
-local spamBtn = styledBtn("Spam Join: OFF", Color3.fromRGB(180, 50, 50))
-local afkBtn = styledBtn("AFK Mode", Color3.fromRGB(200, 150, 50))
-
--- Logic Spam Join
-spamBtn.MouseButton1Click:Connect(function()
-    Is_Spamming_Join = not Is_Spamming_Join
-    spamBtn.Text = Is_Spamming_Join and "Spam Join: ON" or "Spam Join: OFF"
-    spamBtn.BackgroundColor3 = Is_Spamming_Join and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(180, 50, 50)
-    
-    task.spawn(function()
-        while Is_Spamming_Join do
-            if jobIn.Text ~= "" then
-                TeleportService:TeleportToPlaceInstance(game.PlaceId, jobIn.Text, localPlayer)
-            end
-            task.wait(3) -- Chờ teleport
-        end
-    end)
-end)
-
-joinBtn.MouseButton1Click:Connect(function()
-    if jobIn.Text ~= "" then TeleportService:TeleportToPlaceInstance(game.PlaceId, jobIn.Text, localPlayer) end
-end)
-
-afkBtn.MouseButton1Click:Connect(function() toggleAFK(true) end)
-
--- Nút đóng mở Side Menu
 local toggleSide = Instance.new("TextButton", outerFrame)
-toggleSide.Size = UDim2.new(0, 25, 0, 50); toggleSide.Position = UDim2.new(1, 0, 0.5, -25); toggleSide.Text = ">"; toggleSide.BackgroundColor3 = Color3.fromRGB(30,30,30); toggleSide.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", toggleSide)
+toggleSide.Size = UDim2.new(0, 25, 0, 60); toggleSide.Position = UDim2.new(1, 0, 0.5, -30); toggleSide.BackgroundColor3 = Color3.fromRGB(20,20,20); toggleSide.Text = ">"; toggleSide.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", toggleSide)
+
+local sideMenu = Instance.new("Frame", outerFrame)
+sideMenu.Size = UDim2.new(1, 0, 1.2, 0); sideMenu.Position = UDim2.new(1, 10, 0, 0); sideMenu.BackgroundColor3 = Color3.fromRGB(10, 20, 35); sideMenu.BackgroundTransparency = 0.4; sideMenu.Visible = false; Instance.new("UICorner", sideMenu)
+local sideLayout = Instance.new("UIListLayout", sideMenu); sideLayout.Padding = UDim.new(0, 5); sideLayout.HorizontalAlignment = "Center"; Instance.new("UIPadding", sideMenu).PaddingTop = UDim.new(0, 8)
+
+local jobIn = Instance.new("TextBox", sideMenu); jobIn.Size = UDim2.new(0.9,0,0,28); jobIn.PlaceholderText = "Job-ID..."; jobIn.BackgroundColor3 = Color3.fromRGB(30,40,60); jobIn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", jobIn)
+local function sBtn(txt, col)
+local b = Instance.new("TextButton", sideMenu); b.Size = UDim2.new(0.9,0,0,28); b.Text = txt; b.BackgroundColor3 = col; b.TextColor3 = Color3.new(1,1,1); b.Font = "SourceSansBold"; Instance.new("UICorner",b); return b
+end
+
+sBtn("Join Job-id", Color3.fromRGB(45,90,180)).MouseButton1Click:Connect(function()
+if jobIn.Text ~= "" then TeleportService:TeleportToPlaceInstance(game.PlaceId, jobIn.Text, localPlayer) end
+end)
+sBtn("AFK Mode", Color3.fromRGB(180,130,50)).MouseButton1Click:Connect(ShowPrompt)
 
 toggleSide.MouseButton1Click:Connect(function()
-    sideMenu.Visible = not sideMenu.Visible
-    toggleSide.Text = sideMenu.Visible and "<" or ">"
+sideMenu.Visible = not sideMenu.Visible
+toggleSide.Text = sideMenu.Visible and "<" or ">"
 end)
-
--- Hiệu ứng Rainbow & FPS
-local fpsL = Instance.new("TextLabel", innerFrame)
-fpsL.Size = UDim2.new(1, -20, 0.3, 0); fpsL.BackgroundTransparency = 1; fpsL.TextColor3 = Color3.new(1,1,1); fpsL.TextXAlignment = "Right"; fpsL.Font = "GothamBold"; fpsL.TextSize = 16
 
 task.spawn(function()
-    local h = 0 
-    RunService.RenderStepped:Connect(function(dt)
-        h = (h + 0.01) % 1
-        uiGradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromHSV(h,1,1)), ColorSequenceKeypoint.new(1, Color3.fromHSV((h+0.5)%1,1,1))})
-        fpsL.Text = "FPS: " .. math.floor(1/dt)
-    end)
+local h = 0
+RunService.RenderStepped:Connect(function(dt)
+h = (h + 0.01) % 1
+uiGradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromHSV(h,1,1)), ColorSequenceKeypoint.new(1, Color3.fromHSV((h+0.5)%1,1,1))})
+fpsL.Text = "FPS: " .. math.floor(1/dt)
+mapL.Text = GameName
 end)
+end)
+-- Thiết kế nút X đẹp hơn, cải thiển độ hide name của leader board
